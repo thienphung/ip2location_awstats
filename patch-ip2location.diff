@@ -1,0 +1,57 @@
+commit ad2948822a0cf93f8bf374f6c74b039b81742679
+Author: thien phung <thienphg@gmail.com>
+Date:   Wed Jan 21 20:01:43 2015 +0700
+
+    path IP2Location IP2Location_City IP2Location_ISP
+
+diff --git a/tools/awstats_buildstaticpages.pl b/tools/awstats_buildstaticpages.pl
+index 3810d48..7e09f19 100644
+--- a/tools/awstats_buildstaticpages.pl
++++ b/tools/awstats_buildstaticpages.pl
+@@ -368,8 +368,9 @@ foreach my $extranum (1..@ExtraName-1) {
+ 	push @OutputList,'allextra'.$extranum;
+ }
+ #Add plugins
+-foreach ( @PluginsToLoad ) {
++foreach ( @PluginsToLoad ) {	
+ 	if ($_ =~ /^(geoip_[_a-z]+)\s/) { push @OutputList,'plugin_'.$1; }	# Add geoip maxmind subpages
++	if ($_ =~ /^(ip2location_[_a-z]+)\s/) { push @OutputList,'plugin_'.$1; }	# Add ip2location subpages
+ }
+ 
+ 
+diff --git a/wwwroot/cgi-bin/awstats.pl b/wwwroot/cgi-bin/awstats.pl
+index 2a63cad..f80c636 100644
+--- a/wwwroot/cgi-bin/awstats.pl
++++ b/wwwroot/cgi-bin/awstats.pl
+@@ -3325,7 +3325,8 @@ sub Read_Plugins {
+ # In output mode, geo ip plugins are not loaded, so message changes are done here (can't be done in plugin init function)
+ 	if (   $PluginsLoaded{'init'}{'geoip'}
+ 		|| $PluginsLoaded{'init'}{'geoip6'}
+-		|| $PluginsLoaded{'init'}{'geoipfree'} )
++		|| $PluginsLoaded{'init'}{'geoipfree'}
++		|| $PluginsLoaded{'init'}{'ip2location'} )
+ 	{
+ 		$Message[17] = $Message[25] = $Message[148];
+ 	}
+@@ -19284,6 +19285,10 @@ if ( $UpdateStats && $FrameName ne 'index' && $FrameName ne 'mainleft' )
+ 				elsif ( $PluginsLoaded{'GetCountryCodeByAddr'}{'geoip'} ) {
+ 					$Domain = GetCountryCodeByAddr_geoip($HostResolved);
+ 				}
++				
++				elsif ( $PluginsLoaded{'GetCountryCodeByAddr'}{'ip2location'} ) {
++					$Domain = GetCountryCodeByAddr_ip2location($HostResolved);
++				}
+ 
+ #			elsif ($PluginsLoaded{'GetCountryCodeByAddr'}{'geoip_region_maxmind'}) { $Domain=GetCountryCodeByAddr_geoip_region_maxmind($HostResolved); }
+ #			elsif ($PluginsLoaded{'GetCountryCodeByAddr'}{'geoip_city_maxmind'})   { $Domain=GetCountryCodeByAddr_geoip_city_maxmind($HostResolved); }
+@@ -19316,6 +19321,10 @@ if ( $UpdateStats && $FrameName ne 'index' && $FrameName ne 'mainleft' )
+ 					elsif ( $PluginsLoaded{'GetCountryCodeByAddr'}{'geoip'} ) {
+ 						$Domain = GetCountryCodeByAddr_geoip($Host);
+ 					}
++					
++					elsif ( $PluginsLoaded{'GetCountryCodeByAddr'}{'ip2location'} ) {
++						$Domain = GetCountryCodeByAddr_ip2location($HostResolved);
++					}
+ 
+ #				elsif ($PluginsLoaded{'GetCountryCodeByAddr'}{'geoip_region_maxmind'}) { $Domain=GetCountryCodeByAddr_geoip_region_maxmind($Host); }
+ #				elsif ($PluginsLoaded{'GetCountryCodeByAddr'}{'geoip_city_maxmind'})   { $Domain=GetCountryCodeByAddr_geoip_city_maxmind($Host); }
