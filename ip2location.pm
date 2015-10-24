@@ -8,12 +8,15 @@
 
 # <-----
 # ENTER HERE THE USE COMMAND FOR ALL REQUIRED PERL MODULES
+
+#REDIS CACHE
+use Redis;
+
 push @INC, "${DIR}/plugins";
 if (!eval ('require "Geo/IP2Location.pm";')) { return $@?"Error: $@":"Error: Need Perl module Geo::IP2Location"; }
 # ----->
 #use strict;
 no strict "refs";
-
 
 
 #-----------------------------------------------------------------------------
@@ -24,12 +27,23 @@ no strict "refs";
 # AND THE NAME OF ALL FUNCTIONS THE PLUGIN MANAGE.
 my $PluginNeedAWStatsVersion="5.5";
 my $PluginHooksFunctions="GetCountryCodeByAddr ShowInfoHost";
+
+#REDIS CACHE
+#my $cache = Cache::Redis->new(
+#	server    => '127.0.0.1:6379',
+#	namespace => 'ip2location:',
+#);
+my $cache = Redis->new( server => '127.0.0.1:6379', encoding => undef );
+
 # ----->
 
 # <-----
 # IF YOUR PLUGIN NEED GLOBAL VARIABLES, THEY MUST BE DECLARED HERE.
+#use vars qw/
+#%Ip2locationTmpDomainLookup
+#$ip2location
+#/;
 use vars qw/
-%Ip2locationTmpDomainLookup
 $ip2location
 /;
 # ----->
@@ -48,7 +62,7 @@ sub Init_ip2location {
 	debug(" Plugin ip2location: InitParams=$InitParams",1);
 	my ($datafile,$override)=split(/\s+/,$InitParams,2);
 
-	%Ip2locationTmpDomainLookup=();
+	#%Ip2locationTmpDomainLookup=();
 	$ip2location = Geo::IP2Location->open($datafile);
 	# ----->
 
@@ -65,13 +79,15 @@ sub GetCountryCodeByAddr_ip2location {
     my $param="$_[0]";
 	# <-----
 	if (! $param) { return ''; }
-	my $res= TmpLookup_ip2location($param);
+	#my $res= TmpLookup_ip2location($param);
+	my $res	= $cache->get("country_$param");
 	if (! $res) {
 		$res=lc($ip2location->get_country_short($param)) || 'unknown';
-		$Ip2locationTmpDomainLookup{$param}=$res;
+		$cache->set("country_$param", $res);
+		#$Ip2locationTmpDomainLookup{$param}=$res;
 		if ($Debug) { debug("  Plugin $PluginName: GetCountryCodeByAddr for $param: [$res]",5); }
 	}
-	elsif ($Debug) { debug("  Plugin $PluginName: GetCountryCodeByAddr for $param: Already resolved to [$res]",5); }
+	elsif ($Debug) {debug("  Plugin $PluginName: GetCountryCodeByAddr for $param: Already resolved to [$res]",5);}
 	# ----->
 	return $res;
 }
@@ -128,9 +144,9 @@ sub ShowInfoHost_ip2location {
 # Searches the temporary hash for the parameter value and returns the corresponding
 # GEOIP entry
 #-----------------------------------------------------------------------------
-sub TmpLookup_ip2location(){
-	$param = shift;
-    return $Ip2locationTmpDomainLookup{$param}||'';
-}
+#sub TmpLookup_ip2location(){
+#	$param = shift;
+#    return $Ip2locationTmpDomainLookup{$param}||'';
+#}
 
 1;

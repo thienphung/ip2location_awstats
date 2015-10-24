@@ -8,6 +8,9 @@
 
 # <-----
 # ENTER HERE THE USE COMMAND FOR ALL REQUIRED PERL MODULES
+#REDIS CACHE
+use Redis;
+
 push @INC, "${DIR}/plugins";
 if (!eval ('require "Geo/IP2Location.pm";')) { return $@?"Error: $@":"Error: Need Perl module Geo::IP2Location"; }
 # ----->
@@ -25,6 +28,14 @@ my $PluginNeedAWStatsVersion="6.5";
 my $PluginHooksFunctions="AddHTMLMenuLink AddHTMLGraph ShowInfoHost SectionInitHashArray SectionProcessIp SectionProcessHostname SectionReadHistory SectionWriteHistory";
 my $PluginName="ip2location_city";
 my $PluginImplements = "mou";
+
+#REDIS CACHE
+#my $cache = Cache::Redis->new(
+#	server    => '127.0.0.1:6379',
+#	namespace => 'ip2location:',
+#);
+my $cache = Redis->new( server => '127.0.0.1:6379', encoding => undef );
+
 # ----->
 
 # <-----
@@ -241,9 +252,9 @@ sub SectionInitHashArray_ip2location_city {
 sub SectionProcessIp_ip2location_city {
     my $param="$_[0]";      # Param must be an IP
 	# <-----
-	my $record_city 			= $ip2location->get_city($param);
-	my $record_region 			= $ip2location->get_region($param);
-	my $record_country_code 	= $ip2location->get_country_short($param);
+	my $record_city 			= GetCityByAddr_ip2location($param);
+	my $record_region 			= GetRegionByAddr_ip2location($param);
+	my $record_country_code 	= GetCountryCodeByAddr_ip2location($param);
 	if ($Debug) { debug("  Plugin $PluginName: GetCityByIp for $param: [$record_city $record_region $record_country_code]",5); }
 	if ($record_city || $record_region || $record_country_code) {
 		my $city=$record_city;
@@ -262,6 +273,68 @@ sub SectionProcessIp_ip2location_city {
 	}
 	# ----->
 	return;
+}
+
+#-----------------------------------------------------------------------------
+# PLUGIN FUNCTION: GetCountryCodeByAddr_pluginname
+# UNIQUE: YES (Only one plugin using this function can be loaded)
+# GetCountryCodeByAddr is called to translate a host name into a country name.
+#-----------------------------------------------------------------------------
+sub GetCountryCodeByAddr_ip2location {
+    my $param="$_[0]";
+	# <-----
+	if (! $param) { return ''; }
+	#my $res= TmpLookup_ip2location($param);
+	my $res	= $cache->get("country_$param");
+	if (! $res) {
+		$res=lc($ip2location->get_country_short($param)) || 'unknown';
+		$cache->set("country_$param", $res);
+		#$Ip2locationTmpDomainLookup{$param}=$res;
+		if ($Debug) { debug("  Plugin $PluginName: GetCountryCodeByAddr for $param: [$res]",5); }
+	}
+	elsif ($Debug) {debug("  Plugin $PluginName: GetCountryCodeByAddr for $param: Already resolved to [$res]",5);}
+	# ----->
+	return $res;
+}
+
+#-----------------------------------------------------------------------------
+# PLUGIN FUNCTION: GetCityByAddr_pluginname
+# UNIQUE: YES (Only one plugin using this function can be loaded)
+# GetCityByAddr is called to translate a host name into a city name.
+#-----------------------------------------------------------------------------
+sub GetCityByAddr_ip2location {
+    $param = shift;
+	# <-----
+	if (! $param) { return ''; }
+	my $res	= $cache->get("city_$param");
+	if (! $res) {
+		$res=lc($ip2location->get_city($param)) || 'unknown';
+		$cache->set("city_$param", $res);
+		if ($Debug) { debug("  Plugin $PluginName: GetCityByAddr for $param: [$res]",5); }
+	}
+	elsif ($Debug) {debug("  Plugin $PluginName: GetCityByAddr for $param: Already resolved to [$res]",5);}
+	# ----->
+	return $res;
+}
+
+#-----------------------------------------------------------------------------
+# PLUGIN FUNCTION: GetRegionByAddr_pluginname
+# UNIQUE: YES (Only one plugin using this function can be loaded)
+# GetRegionByAddr is called to translate a host name into a region name.
+#-----------------------------------------------------------------------------
+sub GetRegionByAddr_ip2location {
+    $param = shift;
+	# <-----
+	if (! $param) { return ''; }
+	my $res	= $cache->get("region_$param");
+	if (! $res) {
+		$res=lc($ip2location->get_region($param)) || 'unknown';
+		$cache->set("region_$param", $res);
+		if ($Debug) { debug("  Plugin $PluginName: GetRegionByAddr for $param: [$res]",5); }
+	}
+	elsif ($Debug) {debug("  Plugin $PluginName: GetRegionByAddr for $param: Already resolved to [$res]",5);}
+	# ----->
+	return $res;
 }
 
 #-----------------------------------------------------------------------------

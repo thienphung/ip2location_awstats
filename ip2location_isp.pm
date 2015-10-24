@@ -9,6 +9,9 @@
 
 # <-----
 # ENTER HERE THE USE COMMAND FOR ALL REQUIRED PERL MODULES
+#REDIS CACHE
+use Redis;
+
 push @INC, "${DIR}/plugins";
 if (!eval ('require "Geo/IP2Location.pm";')) { return $@?"Error: $@":"Error: Need Perl module Geo::IP2Location"; }
 # ----->
@@ -27,13 +30,29 @@ my $PluginNeedAWStatsVersion="6.2";
 my $PluginHooksFunctions="AddHTMLMenuLink AddHTMLGraph ShowInfoHost SectionInitHashArray SectionProcessIp SectionProcessHostname SectionReadHistory SectionWriteHistory";
 my $PluginName="ip2location_isp";
 my $PluginImplements = "mou";
+
+#REDIS CACHE
+#my $cache = Cache::Redis->new(
+#	server    => '127.0.0.1:6379',
+#	namespace => 'ip2location:',
+#);
+my $cache = Redis->new( server => '127.0.0.1:6379', encoding => undef );
 # ----->
 
 # <-----
 # IF YOUR PLUGIN NEED GLOBAL VARIABLES, THEY MUST BE DECLARED HERE.
+#use vars qw/
+#$ip2location
+#%Ip2locationTmpRegionLookup
+#%_isp_p
+#%_isp_h
+#%_isp_k
+#%_isp_l
+#$MAXNBOFSECTIONGIR
+#$MAXLENGTH
+#/;
 use vars qw/
 $ip2location
-%Ip2locationTmpRegionLookup
 %_isp_p
 %_isp_h
 %_isp_k
@@ -58,7 +77,7 @@ sub Init_ip2location_isp {
 	debug(" Plugin ip2location: InitParams=$InitParams",1);
 	my ($datafile,$override)=split(/\s+/,$InitParams,2);
 
-	%Ip2locationTmpRegionLookup=();
+	#%Ip2locationTmpRegionLookup=();
 	if(!$ip2location){
 		$ip2location = Geo::IP2Location->open($datafile);
 	}
@@ -286,12 +305,14 @@ sub SectionInitHashArray_ip2location_isp {
 sub SectionProcessIp_ip2location_isp {
     my $param="$_[0]";      # Param must be an IP
 	# <-----
-	my $isp = TmpLookup_ip2location_isp($param);
+	#my $isp = TmpLookup_ip2location_isp($param);
+	my $isp = $cache->get("isp_$param");
 	if(!$isp)
 	{
         # Function isp_by_addr does not exits, so we use org_by_addr
 		$isp=$ip2location->get_isp($param) if $ip2location;
-		$Ip2locationTmpRegionLookup{$param}=$isp;		
+		$cache->set("isp_$param", $isp);
+		#$Ip2locationTmpRegionLookup{$param}=$isp;		
 	}
 	
 	if ($Debug) { debug(" Plugin $PluginName: GetIspByIp for $param: [$isp]",5); }
@@ -380,9 +401,9 @@ sub SectionWriteHistory_ip2location_isp {
 # Searches the temporary hash for the parameter value and returns the corresponding
 # GEOIP entry
 #-----------------------------------------------------------------------------
-sub TmpLookup_ip2location_isp(){
-	$param = shift;
-    return $Ip2locationTmpRegionLookup{$param}||'';
-}
+#sub TmpLookup_ip2location_isp(){
+#	$param = shift;
+#    return $Ip2locationTmpRegionLookup{$param}||'';
+#}
 
 1;	# Do not remove this line
